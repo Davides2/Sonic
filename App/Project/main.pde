@@ -6,8 +6,9 @@ int size = 160; // sprite size
 float charX = 100; // Character's X position
 float charY = 520; // Character's Y position (starts at ground level)
 float speed = 30; // Movement speed (increased)
+float runSpeed = 200; // Running speed (increased)
 int direction = 0;
-int speedJump = 40; // Character jump force
+int speedJump = 80; // Character jump force
 int backgroundMax = 2; // Background Frame count
 int groundLevel = 520; // Ground Level
 PImage sonic, obstaculo;
@@ -75,7 +76,7 @@ void setup() {
   player = minim.loadFile("Resources/Musichero.mp3");
   if (player == null) {
     println("Error loading audio file.");
-  } else {x
+  } else {
     player.play();
   }
   
@@ -173,7 +174,6 @@ void draw() {
 }
 
 void moveCharacter() {
-  isRunning = false;
 
   if (keyPressed) {
     if (keyCode == UP || key == 'w' || key == 'W') {
@@ -185,8 +185,8 @@ void moveCharacter() {
       isMoving = true;
     }
     if (keyCode == RIGHT || key == 'd' || key == 'D') {
+      isRunning = keyPressed && keyCode == 'z';
       charX += (isRunning) ? runSpeed : speed;
-      isRunning = keyPressed && keyCode == SHIFT;
       isMoving = true;
     }
   } else {
