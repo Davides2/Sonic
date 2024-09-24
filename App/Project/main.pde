@@ -6,7 +6,6 @@ int size = 160; // sprite size
 float charX = 100; // Character's X position
 float charY = 520; // Character's Y position (starts at ground level)
 float speed = 30; // Movement speed (increased)
-float runSpeed = 50; // Running speed (increased)
 int direction = 0;
 int speedJump = 40; // Character jump force
 int backgroundMax = 2; // Background Frame count
