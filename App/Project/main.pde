@@ -19,7 +19,7 @@ float charSize = 55;  // Tamaño del personaje
 float speedX = 0;  // Velocidad de movimiento horizontal del personaje
 float speedY = 0;  // Velocidad vertical del personaje
 float gravity = 0.5;  // Gravedad
-float jumpStrength = -10; // Fuerza del salto
+float jumpStrength = -20; // Fuerza del salto
 float groundLevel = 570; // Altura donde empieza el suelo
 boolean isJumping = false;  // ¿El personaje está saltando?
 
@@ -35,7 +35,7 @@ int[][] pushFrames = { {0, 4}, {1, 4}, {2, 4}, {3, 4} };
 // Variables para animaciones
 int[][] currentAnimation = idleFrames;  // Animación actual
 int currentFrame = 0;  // Frame actual de la animación
-int frameDelay = 5;   // Retardo entre frames
+int frameDelay = 4;   // Retardo entre frames
 int frameCounter = 0;  // Contador de frames
 
 // Variables para el mapa
@@ -144,12 +144,10 @@ void keyPressed() {
       speedY += jumpStrength / 2;  // Small boost for a higher jump
     }
   } else if (key == 's') {
-    setAnimation(ballStartFrames);  // Animación de transformación a bolita
+    setAnimation(ballHoldFrames);  // Animación de transformación a bolita
   } else if (key == 'r') {
     setAnimation(sprintFrames);  // Animación de sprint
   } else if (key == 'f') {
-    setAnimation(ballHoldFrames);  // Animación de bolita mantenida
-  } else if (key == 'p') {
     setAnimation(pushFrames);  // Animación de empuje
   }
 }
