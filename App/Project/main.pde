@@ -1,5 +1,10 @@
+import ddf.minim.*;
+
 PImage backgroundImage;  // Imagen de fondo
 PImage spriteSheet;  // Sprite sheet del personaje
+
+AudioPlayer song;
+Minim minim;
 
 // Variables para el mapa
 int mapWidth = 10420;  // Ancho total del mapa
@@ -30,7 +35,7 @@ int[][] pushFrames = { {0, 4}, {1, 4}, {2, 4}, {3, 4} };
 // Variables para animaciones
 int[][] currentAnimation = idleFrames;  // Animación actual
 int currentFrame = 0;  // Frame actual de la animación
-int frameDelay = 10;   // Retardo entre frames
+int frameDelay = 5;   // Retardo entre frames
 int frameCounter = 0;  // Contador de frames
 
 // Variables para el mapa
@@ -42,8 +47,8 @@ void setup() {
   size(1240, 640);  // Tamaño de la ventana
 
   // Cargar la imagen de fondo y el sprite sheet de Sonic
-  backgroundImage = loadImage("D:/Usuarios/David Estrada/Documents/GitHub/Sonic_Public/App/Project/Resources/Sonic_Map_L1.png");
-  spriteSheet = loadImage("D:/Usuarios/David Estrada/Documents/GitHub/Sonic_Public/App/Project/Resources/Sonic_Spritesheet.png");
+  backgroundImage = loadImage("C:/Users/ASUS/Documents/GitHub/Sonic/App/Project/Resources/Sonic_Map_L1.png");
+  spriteSheet = loadImage("C:/Users/ASUS/Documents/GitHub/Sonic/App/Project/Resources/Sonic_Spritesheet.png");
 
   if (backgroundImage == null || spriteSheet == null) {
     println("Error al cargar las imágenes.");
@@ -53,20 +58,27 @@ void setup() {
   // Colocar el personaje justo encima del nivel del suelo
   worldX = 100;  // En el borde izquierdo del mapa pero desplazado 100px
   worldY = groundLevel - charSize / 2;  // Colocar al personaje en el suelo, ajustado a su tamaño
+  
+  //Música
+  minim = new Minim(this);
+  song = minim.loadFile("music.mp3");
+  song.play();
+  
 }
 
 void draw() {
   background(255);
 
-  // Actualizar la posición horizontal basándonos en la velocidad
-  worldX += speedX * ballSpeedFactor;  // La velocidad del personaje es más lenta que la del mapa
+   // Mover el mapa solo cuando el personaje "intenta" moverse
+  mapOffsetX += speedX * mapSpeedFactor;  // El mapa se mueve, no el personaje
 
-  // Limitar el desplazamiento horizontal para que no se salga del mapa
-  worldX = constrain(worldX, 0, mapWidth);  // Evita que el personaje se salga del mapa en el eje X
+  // Limitar el desplazamiento del mapa para que no se salga del borde
+  mapOffsetX = constrain(mapOffsetX, 0, mapWidth - width);  // Mantener el mapa dentro de los límites
+  mapOffsetY = constrain(mapOffsetY, 0, mapHeight - height); // Ajuste vertical del mapa
 
-  // Mover el mapa solo cuando el personaje alcanza x = 340
-  if (worldX >= 340) {
-    mapOffsetX = int((worldX - 340) * mapSpeedFactor);  // El mapa se mueve más rápido que el personaje, y empieza a moverse desde 340px
+  // Dibujar solo la sección visible del fondo
+  if (backgroundImage != null) {
+    image(backgroundImage, -mapOffsetX, -mapOffsetY, mapWidth, mapHeight);
   }
 
   // Ajustar la posición vertical del mapa para moverlo 50px hacia abajo
@@ -165,6 +177,7 @@ void keyReleased() {
 }
 
 void updatePhysics() {
+  
   // Aplicar gravedad cuando el personaje está saltando
   if (worldY < groundLevel) {
     speedY += gravity;  // Aumentar la velocidad de caída por gravedad
