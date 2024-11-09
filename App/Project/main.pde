@@ -47,8 +47,8 @@ void setup() {
   size(1240, 640);  // Tamaño de la ventana
 
   // Cargar la imagen de fondo y el sprite sheet de Sonic
-  backgroundImage = loadImage("C:/Users/ASUS/Documents/GitHub/Sonic/App/Project/Resources/Sonic_Map_L1.png");
-  spriteSheet = loadImage("C:/Users/ASUS/Documents/GitHub/Sonic/App/Project/Resources/Sonic_Spritesheet.png");
+  backgroundImage = loadImage("Sonic_Map_L1.png");
+  spriteSheet = loadImage("Sonic_Spritesheet.png");
 
   if (backgroundImage == null || spriteSheet == null) {
     println("Error al cargar las imágenes.");
