@@ -2,17 +2,27 @@ PImage spriteSheet; // Hoja de sprites de Sonic
 PImage backgroundImage; // Imagen de fondo (el mapa de colisiones)
 int spriteWidth = 50; // Ancho de cada sprite
 int spriteHeight = 49; // Alto de cada sprite
+int scene = 0;
+PImage fondo;
+Button botónjugar, botónopciones, botónsalir;
+PFont fuentePrincipal, fuenteOpciones, fuenteSalir, fuenteJugar;
 
 // Definir las animaciones con las posiciones correctas
 int[][] walkFrames = { {4, 0}, {5, 0}, {6, 0}, {7, 0}, {8, 0} };  // Animación caminar
 int[][] jumpFrames = { {0, 6}, {1, 3}, {2, 3}, {3, 3}, {1, 3}, {0, 0} };  // Animación de salto
 int[][] idleFrames = { {0, 0}, {1, 0}, {2, 0} }; // Animación idle
 int[][] ballHoldFrames = { {5, 3}, {6, 3}, {7, 3}, {8, 3} }; // Animación de bolita
-
 int[][] currentAnimation = idleFrames; // Animación actual
 int currentFrame = 0;
 int frameDelay = 10;  // Velocidad de cambio de cuadro
 int frameCounter = 0; // Contador de cuadros para la animación
+
+int mapWidth = 3072;  // Ancho total del mapa
+int mapHeight = 435;  // Altura total del mapa
+int mapOffsetX = 0;  // Desplazamiento horizontal del mapa
+int mapOffsetY = 0;  // Desplazamiento vertical del mapa
+float mapSpeedFactor = 1.5;  // Factor de velocidad para que el mapa se mueva más rápido que el personaje
+float ballSpeedFactor = 1;  // Factor de velocidad para que el personaje se mueva más lento que el mapa
 
 // Variables físicas
 int[][] collisionMap;
@@ -23,27 +33,44 @@ float speedX = 0;
 float speedY = 0;
 float gravity = 0.5;
 boolean isJumping = false;
-
 boolean isBall = false;  // Indicador de si Sonic es una bolita
 
 void setup() {
   size(720, 435); // Tamaño de la ventana
+  
+  fondo = loadImage("fondosonic.png");
+  fuentePrincipal = createFont("Arial", 24);
+  fuenteJugar = createFont("Arial", 24);
+  fuenteOpciones = createFont("Arial", 24);
+  fuenteSalir = createFont("Arial", 24);
+  
+  botónjugar = new Button(width/2 - 50, height/2 - 30, 100, 40, "Jugar", fuenteJugar);
+  botónopciones = new Button(width/2 - 75, height/2 + 20, 150, 40, "Opciones", fuenteOpciones);
+  botónsalir = new Button(width/2 - 50, height/2 + 70, 100, 40, "Salir", fuenteSalir);
 
   // Cargar la hoja de sprites de Sonic
-  spriteSheet = loadImage("D:/Usuarios/David Estrada/Documents/GitHub/Sonic_Public/App/Project/data/Resources/Sonic_Spritesheet.png");
+  spriteSheet = loadImage("Sonic_Spritesheet.png");
 
   // Cargar el fondo (la imagen del mapa de colisiones) con su tamaño original
-  backgroundImage = loadImage("D:/Usuarios/David Estrada/Documents/GitHub/Sonic_Public/App/Project/data/Resources/Map.png");
+  backgroundImage = loadImage("Map.png");
 
   // Cargar el mapa de colisiones
-  loadCollisionMap("D:/Usuarios/David Estrada/Documents/GitHub/Sonic_Public/App/Project/data/Matriz.csv");
+  loadCollisionMap("Matriz.csv");
 }
 
 void draw() {
   background(255); // Limpia la pantalla
+  
+  if (scene == 0) {
+    mainMenu();
+  } else if (scene == 1) {
+    gameScreen();
+  } else if (scene == 2) {
+    optionsScreen();
+  }
 
   // Dibujar el fondo del mapa en su tamaño original (3072x435)
-  image(backgroundImage, 0, 0); // No redimensionar, dibujar con sus dimensiones originales
+  image(backgroundImage, -mapOffsetX, -mapOffsetY);
 
   // Actualizar la animación
   frameCounter++;
@@ -61,10 +88,63 @@ void draw() {
   // Colisiones
   basicCollision();
 
-  // Actualizar posición
-  worldX += speedX;
+  // Mover el mapa 
+  mapOffsetX += speedX * mapSpeedFactor;  // El mapa se mueve, no el personaje
   worldY += speedY;
+  // Limitar el desplazamiento del mapa para que no se salga del borde
+  mapOffsetX = constrain(mapOffsetX, 0, mapWidth - width);  // Mantener el mapa dentro de los límites
+  mapOffsetY = constrain(mapOffsetY, 0, mapHeight - height); // Ajuste vertical del mapa
+  
 }
+
+void mainMenu() {
+  image(fondo, 0, 0, width, height);
+  textAlign(CENTER);
+  drawTextWithOutline("¡Bienvenido al juego!", width/2, 120, color(255, 217, 47), color(26, 91, 203), 3);
+  botónjugar.display();
+  botónopciones.display();
+  botónsalir.display();
+}
+
+void gameScreen() {
+  background(255);
+  image(backgroundImage, -mapOffsetX, 0);
+
+  frameCounter++;
+  if (frameCounter >= frameDelay) {
+    frameCounter = 0;
+    nextFrame();
+  }
+  drawCharacter();
+  speedY += gravity;
+  mapOffsetX += speedX * mapSpeedFactor;
+  worldY += speedY;
+
+  fill(255);
+  textAlign(CENTER);
+  textSize(16);
+  text("Presiona 'M' para regresar al menú", width/2, height - 30);
+}
+
+void optionsScreen() {
+  background(100, 100, 255);
+  textAlign(CENTER);
+  textSize(32);
+  text("Opciones", width/2, height/2);
+}
+
+void mousePressed() {
+  if (scene == 0) {
+    if (botónjugar.isMouseOver()) {
+      scene = 1;
+    } else if (botónopciones.isMouseOver()) {
+      scene = 2;
+    } else if (botónsalir.isMouseOver()) {
+      exit();
+    }
+  }
+}
+
 
 // Función para cargar el mapa de colisiones desde un archivo CSV
 void loadCollisionMap(String Matriz) {
@@ -121,6 +201,12 @@ void setAnimation(int[][] newAnimation) {
 }
 
 void keyPressed() {
+  
+  //Volver al menú
+  if (key == 'm' || key == 'M') {
+    scene = 0; 
+  }
+  
   // Movimiento horizontal
   if (key == 'a') {
     speedX = -5;  // Mover a la izquierda
@@ -131,7 +217,7 @@ void keyPressed() {
   }
 
   // Salto
-  if ((key == 'w' || key == ' ') && !isJumping) {  // Solo saltar si está en el suelo
+  if ((key == 'w' || key == 'W') && !isJumping) {  // Solo saltar si está en el suelo
     speedY = -40;  // Ajustado para que suba 40 píxeles
     isJumping = true;
     setAnimation(jumpFrames);  // Cambiar a la animación de salto
@@ -144,23 +230,28 @@ void keyPressed() {
   }
 }
 
-void keyReleased() {
-  // Movimiento horizontal
+void keyReleased() {  
+  // Detener el movimiento horizontal cuando se suelta la tecla
   if (key == 'a' || key == 'd') {
-    speedX = 0;  // Detener movimiento horizontal
-    if (speedY == 0 && !isBall) {
-      setAnimation(idleFrames);  // Volver a la animación de reposo si no se está saltando ni en bolita
-    }
-  }
-
-  // Si se suelta la tecla 's', dejar de ser bolita
-  if (key == 's') {
-    isBall = false;  // Sonic deja de ser bolita
+    speedX = 0;  // Detener el movimiento horizontal
     if (speedY == 0) {
-      setAnimation(idleFrames);  // Volver a la animación de reposo
-    }
+      setAnimation(idleFrames);  // Cambiar a animación idle
+      }
+  } else if (key == 'w') {
+      if (speedY == 0) {
+        setAnimation(idleFrames);  // Regresar a la animación idle después de saltar
+      }
+  } else if (key == 'r') {
+      setAnimation(idleFrames);  // Regresar a la animación idle
+  } else if (key == 's') {
+      isBall = false;
+      setAnimation(idleFrames);  // Regresar a la animación idle
+  } else if (key == 'f') {
+      setAnimation(idleFrames);  // Regresar a la animación idle
+  } else if (key == 'p') {
+      setAnimation(idleFrames);  // Regresar a la animación idle
   }
-}
+  } 
 
 // Función básica de colisión
 void basicCollision() {
@@ -178,12 +269,65 @@ void basicCollision() {
   }
 }
 
-// Función para verificar si una posición está en una celda sólida
 boolean isSolid(float x, float y) {
-  int mapX = int(x / charSize);
-  int mapY = int(y / charSize);
+  // Ajustar las coordenadas con el desplazamiento del mapa
+  float adjustedX = x + mapOffsetX;
+  float adjustedY = y + mapOffsetY;
+
+  // Convertir las coordenadas ajustadas a índices de la matriz de colisiones
+  int mapX = int(adjustedX / charSize);
+  int mapY = int(adjustedY / charSize);
+
+  // Comprobar si los índices están dentro del rango del mapa
   if (mapX >= 0 && mapX < collisionMap[0].length && mapY >= 0 && mapY < collisionMap.length) {
     return collisionMap[mapY][mapX] == 1;
   }
   return false;
+}
+
+class Button {
+  float x, y, w, h;
+  String label;
+  PFont fuente;
+
+  Button(float tempX, float tempY, float tempW, float tempH, String tempLabel, PFont tempFuente) {
+    x = tempX;
+    y = tempY;
+    w = tempW;
+    h = tempH;
+    label = tempLabel;
+    fuente = tempFuente;
+  }
+
+  void display() {
+    if (isMouseOver()) {
+      fill(200);
+    } else {
+      fill(150);
+    }
+    rect(x, y, w, h);
+    fill(0);
+    textAlign(CENTER, CENTER);
+    textFont(fuente);
+    text(label, x + w / 2, y + h / 2);
+  }
+
+  boolean isMouseOver() {
+    return mouseX > x && mouseX < x + w && mouseY > y && mouseY < y + h;
+  }
+}
+
+void drawTextWithOutline(String txt, float x, float y, color textColor, color outlineColor, float outlineThickness) {
+  textFont(fuentePrincipal);
+  textAlign(CENTER);
+  
+  fill(outlineColor);
+  for (float dx = -outlineThickness; dx <= outlineThickness; dx += 1) {
+    for (float dy = -outlineThickness; dy <= outlineThickness; dy += 1) {
+      text(txt, x + dx, y + dy);
+    }
+  }
+
+  fill(textColor);
+  text(txt, x, y);
 }
