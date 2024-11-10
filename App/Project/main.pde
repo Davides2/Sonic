@@ -1,11 +1,12 @@
+import ddf.minim.*;
+
+AudioPlayer song;
+Minim minim;
+
 PImage spriteSheet; // Hoja de sprites de Sonic
 PImage backgroundImage; // Imagen de fondo (el mapa de colisiones)
 int spriteWidth = 50; // Ancho de cada sprite
 int spriteHeight = 49; // Alto de cada sprite
-int scene = 0;
-PImage fondo;
-Button botónjugar, botónopciones, botónsalir;
-PFont fuentePrincipal, fuenteOpciones, fuenteSalir, fuenteJugar;
 
 // Definir las animaciones con las posiciones correctas
 int[][] walkFrames = { {4, 0}, {5, 0}, {6, 0}, {7, 0}, {8, 0} };  // Animación caminar
@@ -35,18 +36,16 @@ float gravity = 0.5;
 boolean isJumping = false;
 boolean isBall = false;  // Indicador de si Sonic es una bolita
 
+//Instancia única de un enemigo
+Enemy enemy;
+
 void setup() {
   size(720, 435); // Tamaño de la ventana
   
-  fondo = loadImage("fondosonic.png");
-  fuentePrincipal = createFont("Arial", 24);
-  fuenteJugar = createFont("Arial", 24);
-  fuenteOpciones = createFont("Arial", 24);
-  fuenteSalir = createFont("Arial", 24);
-  
-  botónjugar = new Button(width/2 - 50, height/2 - 30, 100, 40, "Jugar", fuenteJugar);
-  botónopciones = new Button(width/2 - 75, height/2 + 20, 150, 40, "Opciones", fuenteOpciones);
-  botónsalir = new Button(width/2 - 50, height/2 + 70, 100, 40, "Salir", fuenteSalir);
+  //Música
+  minim = new Minim(this);
+  song = minim.loadFile("music.mp3");
+  song.play();
 
   // Cargar la hoja de sprites de Sonic
   spriteSheet = loadImage("Sonic_Spritesheet.png");
@@ -56,18 +55,14 @@ void setup() {
 
   // Cargar el mapa de colisiones
   loadCollisionMap("Matriz.csv");
+  
+    // Inicializar el enemigo en una posición inicial
+  enemy = new Enemy(300, 100);
+  
 }
 
 void draw() {
   background(255); // Limpia la pantalla
-  
-  if (scene == 0) {
-    mainMenu();
-  } else if (scene == 1) {
-    gameScreen();
-  } else if (scene == 2) {
-    optionsScreen();
-  }
 
   // Dibujar el fondo del mapa en su tamaño original (3072x435)
   image(backgroundImage, -mapOffsetX, -mapOffsetY);
@@ -95,53 +90,75 @@ void draw() {
   mapOffsetX = constrain(mapOffsetX, 0, mapWidth - width);  // Mantener el mapa dentro de los límites
   mapOffsetY = constrain(mapOffsetY, 0, mapHeight - height); // Ajuste vertical del mapa
   
+  // Actualizar y dibujar al enemigo
+  enemy.update();
+  enemy.display();
+  
 }
 
-void mainMenu() {
-  image(fondo, 0, 0, width, height);
-  textAlign(CENTER);
-  drawTextWithOutline("¡Bienvenido al juego!", width/2, 120, color(255, 217, 47), color(26, 91, 203), 3);
-  botónjugar.display();
-  botónopciones.display();
-  botónsalir.display();
-}
+class Enemy {
+  float worldX, worldY;  // Posición del enemigo en el mundo
+  float width = 32;  // Ancho del enemigo
+  float height = 32;  // Alto del enemigo
+  float speedX = 2;  // Velocidad horizontal del enemigo
+  float speedY = 0;  // Velocidad vertical del enemigo
+  float gravity = 0.5;  // Gravedad aplicada al enemigo
+  boolean isJumping = true;  // Indica si el enemigo está en el aire
 
-void gameScreen() {
-  background(255);
-  image(backgroundImage, -mapOffsetX, 0);
-
-  frameCounter++;
-  if (frameCounter >= frameDelay) {
-    frameCounter = 0;
-    nextFrame();
+  // Constructor para inicializar la posición inicial del enemigo
+  Enemy(float startX, float startY) {
+    worldX = startX;
+    worldY = startY;
   }
-  drawCharacter();
-  speedY += gravity;
-  mapOffsetX += speedX * mapSpeedFactor;
-  worldY += speedY;
 
-  fill(255);
-  textAlign(CENTER);
-  textSize(16);
-  text("Presiona 'M' para regresar al menú", width/2, height - 30);
-}
+  // Método para actualizar el estado del enemigo
+  void update() {
+    // Aplicar gravedad
+    speedY += gravity;
 
-void optionsScreen() {
-  background(100, 100, 255);
-  textAlign(CENTER);
-  textSize(32);
-  text("Opciones", width/2, height/2);
-}
+    // Verificar colisiones y actualizar posición
+    basicCollision();
 
-void mousePressed() {
-  if (scene == 0) {
-    if (botónjugar.isMouseOver()) {
-      scene = 1;
-    } else if (botónopciones.isMouseOver()) {
-      scene = 2;
-    } else if (botónsalir.isMouseOver()) {
-      exit();
+    // Movimiento horizontal
+    worldX += speedX;
+    worldY += speedY;
+  }
+
+  // Método para dibujar al enemigo en función del desplazamiento del mapa
+  void display() {
+    // Ajustar la posición de renderizado según el desplazamiento del mapa
+    float screenX = worldX - mapOffsetX;
+    float screenY = worldY - mapOffsetY;
+    fill(255, 0, 0);  // Color rojo para el enemigo
+    rect(screenX - width / 2, screenY - height / 2, width, height);  // Dibujar el enemigo como un rectángulo
+  }
+
+  // Función básica de colisión del enemigo
+  void basicCollision() {
+    if (speedY > 0 && isSolid(worldX, worldY + charSize / 2 + speedY)) {
+    speedY = 0; // Detener la velocidad en Y cuando haya colisión
+    isJumping = false;
+    // Ajustar la posición de Sonic para que se quede justo sobre el suelo
+    worldY = (int((worldY + charSize / 2) / charSize)) * charSize - charSize / 2;
+  } else {
+    isJumping = true;
+  }
+    // Colisiones laterales
+    if (speedX > 0 && isSolid(worldX + width / 2 + speedX, worldY)) {  // Colisión derecha
+      speedX *= -1;  // Cambia de dirección
+    } else if (speedX < 0 && isSolid(worldX - width / 2 + speedX, worldY)) {  // Colisión izquierda
+      speedX *= -1;  // Cambia de dirección
     }
+  }
+
+  // Función para verificar si una posición está en una celda sólida
+  boolean isSolid(float checkX, float checkY) {
+    int mapX = int(checkX / charSize);
+    int mapY = int(checkY / charSize);
+    if (mapX >= 0 && mapX < collisionMap[0].length && mapY >= 0 && mapY < collisionMap.length) {
+      return collisionMap[mapY][mapX] == 1;
+    }
+    return false;
   }
 }
 
@@ -201,12 +218,6 @@ void setAnimation(int[][] newAnimation) {
 }
 
 void keyPressed() {
-  
-  //Volver al menú
-  if (key == 'm' || key == 'M') {
-    scene = 0; 
-  }
-  
   // Movimiento horizontal
   if (key == 'a') {
     speedX = -5;  // Mover a la izquierda
@@ -218,7 +229,8 @@ void keyPressed() {
 
   // Salto
   if ((key == 'w' || key == 'W') && !isJumping) {  // Solo saltar si está en el suelo
-    speedY = -40;  // Ajustado para que suba 40 píxeles
+    speedY = -8;
+    worldY = worldY - 50;
     isJumping = true;
     setAnimation(jumpFrames);  // Cambiar a la animación de salto
   }
@@ -233,10 +245,9 @@ void keyPressed() {
 void keyReleased() {  
   // Detener el movimiento horizontal cuando se suelta la tecla
   if (key == 'a' || key == 'd') {
-    speedX = 0;  // Detener el movimiento horizontal
-    if (speedY == 0) {
-      setAnimation(idleFrames);  // Cambiar a animación idle
-      }
+    speedX = 0;  // Detener el movimiento horizontal     
+    setAnimation(idleFrames);  // Cambiar a animación idle
+      
   } else if (key == 'w') {
       if (speedY == 0) {
         setAnimation(idleFrames);  // Regresar a la animación idle después de saltar
@@ -251,7 +262,7 @@ void keyReleased() {
   } else if (key == 'p') {
       setAnimation(idleFrames);  // Regresar a la animación idle
   }
-  } 
+ } 
 
 // Función básica de colisión
 void basicCollision() {
@@ -283,51 +294,4 @@ boolean isSolid(float x, float y) {
     return collisionMap[mapY][mapX] == 1;
   }
   return false;
-}
-
-class Button {
-  float x, y, w, h;
-  String label;
-  PFont fuente;
-
-  Button(float tempX, float tempY, float tempW, float tempH, String tempLabel, PFont tempFuente) {
-    x = tempX;
-    y = tempY;
-    w = tempW;
-    h = tempH;
-    label = tempLabel;
-    fuente = tempFuente;
-  }
-
-  void display() {
-    if (isMouseOver()) {
-      fill(200);
-    } else {
-      fill(150);
-    }
-    rect(x, y, w, h);
-    fill(0);
-    textAlign(CENTER, CENTER);
-    textFont(fuente);
-    text(label, x + w / 2, y + h / 2);
-  }
-
-  boolean isMouseOver() {
-    return mouseX > x && mouseX < x + w && mouseY > y && mouseY < y + h;
-  }
-}
-
-void drawTextWithOutline(String txt, float x, float y, color textColor, color outlineColor, float outlineThickness) {
-  textFont(fuentePrincipal);
-  textAlign(CENTER);
-  
-  fill(outlineColor);
-  for (float dx = -outlineThickness; dx <= outlineThickness; dx += 1) {
-    for (float dy = -outlineThickness; dy <= outlineThickness; dy += 1) {
-      text(txt, x + dx, y + dy);
-    }
-  }
-
-  fill(textColor);
-  text(txt, x, y);
 }
