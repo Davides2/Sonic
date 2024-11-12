@@ -1,99 +1,160 @@
-import ddf.minim.*;
+import ddf.minim.*; //Librería musiquita
 
 AudioPlayer song;
 Minim minim;
 
 PImage spriteSheet; // Hoja de sprites de Sonic
-PImage backgroundImage; // Imagen de fondo (el mapa de colisiones)
+PImage backgroundImage; // Imagen de fondo
 int spriteWidth = 50; // Ancho de cada sprite
 int spriteHeight = 49; // Alto de cada sprite
+int scene = 0;
+PImage fondo;
+Button botónjugar, botónsalir; //Botones de la UI
+PFont fuenteSalir, fuenteJugar; //Fuentes de los botones
 
-// Definir las animaciones con las posiciones correctas
-int[][] walkFrames = { {4, 0}, {5, 0}, {6, 0}, {7, 0}, {8, 0} };  // Animación caminar
-int[][] jumpFrames = { {0, 6}, {1, 3}, {2, 3}, {3, 3}, {1, 3}, {0, 0} };  // Animación de salto
+//Animaciones
+int[][] walkFrames = { {4, 0}, {5, 0}, {6, 0}, {7, 0}, {8, 0} };  //Animación caminar
+int[][] jumpFrames = { {0, 6}, {1, 3}, {2, 3}, {3, 3}, {1, 3}, {0, 0} };  //Animación saltar
 int[][] idleFrames = { {0, 0}, {1, 0}, {2, 0} }; // Animación idle
-int[][] ballHoldFrames = { {5, 3}, {6, 3}, {7, 3}, {8, 3} }; // Animación de bolita
-int[][] currentAnimation = idleFrames; // Animación actual
+int[][] ballFrames = { {5, 3}, {6, 3}, {7, 3}, {8, 3} }; //Animación bolita
+int[][] sprintFrames = { {7, 1}, {8, 1}, {0, 2}, {1, 2} }; //Animación correr 
+int[][] currentAnimation = idleFrames; //Animación actual
 int currentFrame = 0;
-int frameDelay = 10;  // Velocidad de cambio de cuadro
-int frameCounter = 0; // Contador de cuadros para la animación
+int frameDelay = 10;  //Velocidad de cambio de frames
+int frameCounter = 0; 
 
-int mapWidth = 3072;  // Ancho total del mapa
-int mapHeight = 435;  // Altura total del mapa
-int mapOffsetX = 0;  // Desplazamiento horizontal del mapa
-int mapOffsetY = 0;  // Desplazamiento vertical del mapa
-float mapSpeedFactor = 1.5;  // Factor de velocidad para que el mapa se mueva más rápido que el personaje
-float ballSpeedFactor = 1;  // Factor de velocidad para que el personaje se mueva más lento que el mapa
+//Variables del mapa
+int mapWidth = 3072;  
+int mapHeight = 435;  
+int mapSetX = 0;  //Desplazamiento horizontal del mapa
+int mapSetY = 0; 
+float mapSpeed = 1.5;  //Velocidad del mapa
+float charSpeed = 1;  //Velocidad del Sonic
 
-// Variables físicas
+//Variables físicas
 int[][] collisionMap;
-float worldX = 100; // Posición inicial de Sonic en el eje X
-float worldY = 100; // Posición inicial en el eje Y
-float charSize = 32; // Tamaño del personaje
-float speedX = 0;
+float PiX = 100; //Posición inicial de Sonic en el eje X
+float PiY = 100; //Posición inicial en el eje Y
+float charSize = 32; //Tamaño del Sonic
+float speedX = 0; 
 float speedY = 0;
-float gravity = 0.5;
+float gravedad = 0.5;
 boolean isJumping = false;
-boolean isBall = false;  // Indicador de si Sonic es una bolita
+boolean isBall = false;  //Si Sonic es una bolita
 
-//Instancia única de un enemigo
 Enemy enemy;
 
 void setup() {
-  size(720, 435); // Tamaño de la ventana
+  size(720, 435); 
   
-  //Música
+  //Musiquita
   minim = new Minim(this);
   song = minim.loadFile("music.mp3");
   song.play();
+  
+  fondo = loadImage("fondomenu.png");
+  fuenteJugar = createFont("Consolas", 24);
+  fuenteSalir = createFont("Consolas", 24);
+  
+  botónjugar = new Button(width/2 - 50, height/2 - 30, 100, 40, "Jugar", fuenteJugar);
+  botónsalir = new Button(width/2 - 50, height/2 + 70, 100, 40, "Salir", fuenteSalir);
 
-  // Cargar la hoja de sprites de Sonic
   spriteSheet = loadImage("Sonic_Spritesheet.png");
-
-  // Cargar el fondo (la imagen del mapa de colisiones) con su tamaño original
   backgroundImage = loadImage("Map.png");
-
-  // Cargar el mapa de colisiones
-  loadCollisionMap("Matriz.csv");
+  loadCollisionMap("Mat.csv");
   
-    // Inicializar el enemigo en una posición inicial
   enemy = new Enemy(300, 100);
-  
+
 }
 
 void draw() {
-  background(255); // Limpia la pantalla
+  
+  background(255);
+  
+  if (scene == 0) {
+    menu();
+  } else if (scene == 1) {
+    game();
+  }
 
-  // Dibujar el fondo del mapa en su tamaño original (3072x435)
-  image(backgroundImage, -mapOffsetX, -mapOffsetY);
+  image(backgroundImage, -mapSetX, -mapSetY);
 
-  // Actualizar la animación
+  //Actualizar animaciones
   frameCounter++;
   if (frameCounter >= frameDelay) {
     frameCounter = 0;
     nextFrame();
   }
+  drawChar();
+  speedY += gravedad;
+  colisiones();
 
-  // Dibujar el personaje con la animación
-  drawCharacter();
+  //Scroll del mapa
+  mapSetX += speedX * mapSpeed; 
+  PiY += speedY;
+  mapSetX = constrain(mapSetX, 0, mapWidth - width);  
 
-  // Aplicar gravedad
-  speedY += gravity;
-
-  // Colisiones
-  basicCollision();
-
-  // Mover el mapa 
-  mapOffsetX += speedX * mapSpeedFactor;  // El mapa se mueve, no el personaje
-  worldY += speedY;
-  // Limitar el desplazamiento del mapa para que no se salga del borde
-  mapOffsetX = constrain(mapOffsetX, 0, mapWidth - width);  // Mantener el mapa dentro de los límites
-  mapOffsetY = constrain(mapOffsetY, 0, mapHeight - height); // Ajuste vertical del mapa
+  //Cositas
+  if (speedX == 0 && speedY == 0 && !isJumping && !isBall) {
+  setAnimation(idleFrames);
+  }
   
   // Actualizar y dibujar al enemigo
   enemy.update();
   enemy.display();
   
+}
+
+void menu() {
+  image(fondo, 0, 0, width, height);
+  textAlign(CENTER);
+  botónjugar.display();
+  botónsalir.display();
+}
+
+void game() {
+  background(255);
+  image(backgroundImage, -mapSetX, 0);
+
+  frameCounter++;
+  if (frameCounter >= frameDelay) {
+    frameCounter = 0;
+    nextFrame();
+  }
+  drawChar();
+  speedY += gravedad;
+  mapSetX += speedX * mapSpeed;
+  PiY += speedY;
+
+  fill(255);
+  textAlign(CENTER);
+  textSize(16);
+  text("Presiona 'M' para regresar al menú", width/2, height - 30);
+}
+
+
+void mousePressed() {
+  if (scene == 0) {
+    if (botónjugar.isMouseOver()) {
+      scene = 1;
+  } else if (botónsalir.isMouseOver()) {
+      exit();
+    }
+  }
+}
+
+
+//Mapa de colisiones CSV
+void loadCollisionMap(String Matriz) {
+  String[] lines = loadStrings(Matriz);
+  collisionMap = new int[lines.length][]; 
+  for (int i = 0; i < lines.length; i++) {
+    String[] values = split(lines[i], ',');
+    collisionMap[i] = new int[values.length];
+    for (int j = 0; j < values.length; j++) {
+      collisionMap[i][j] = int(values[j]);
+    }
+  }
 }
 
 class Enemy {
@@ -127,8 +188,8 @@ class Enemy {
   // Método para dibujar al enemigo en función del desplazamiento del mapa
   void display() {
     // Ajustar la posición de renderizado según el desplazamiento del mapa
-    float screenX = worldX - mapOffsetX;
-    float screenY = worldY - mapOffsetY;
+    float screenX = worldX - mapSetX;
+    float screenY = worldY - mapSetY;
     fill(255, 0, 0);  // Color rojo para el enemigo
     rect(screenX - width / 2, screenY - height / 2, width, height);  // Dibujar el enemigo como un rectángulo
   }
@@ -162,54 +223,26 @@ class Enemy {
   }
 }
 
-
-// Función para cargar el mapa de colisiones desde un archivo CSV
-void loadCollisionMap(String Matriz) {
-  String[] lines = loadStrings(Matriz);
-  collisionMap = new int[lines.length][]; 
-  for (int i = 0; i < lines.length; i++) {
-    String[] values = split(lines[i], ',');
-    collisionMap[i] = new int[values.length];
-    for (int j = 0; j < values.length; j++) {
-      collisionMap[i][j] = int(values[j]);
-    }
-  }
-}
-
-// Dibuja el mapa de colisiones en pantalla para referencia
-void drawCollisionMap() {
-  for (int y = 0; y < collisionMap.length; y++) {
-    for (int x = 0; x < collisionMap[y].length; x++) {
-      if (collisionMap[y][x] == 1) {
-        fill(0); // Negro para celdas sólidas
-      } else {
-        fill(200); // Gris claro para celdas vacías
-      }
-      rect(x * charSize, y * charSize, charSize, charSize);
-    }
-  }
-}
-
-// Función para dibujar al personaje
-void drawCharacter() {
-  int sx = currentAnimation[currentFrame][0] * spriteWidth; // Cuadro X
-  int sy = currentAnimation[currentFrame][1] * spriteHeight; // Cuadro Y
-  PImage frame = spriteSheet.get(sx, sy, spriteWidth, spriteHeight); // Obtener el cuadro de la hoja de sprites
+//Dibujar al personaje
+void drawChar() {
+  int sx = currentAnimation[currentFrame][0] * spriteWidth; 
+  int sy = currentAnimation[currentFrame][1] * spriteHeight; 
+  PImage frame = spriteSheet.get(sx, sy, spriteWidth, spriteHeight); //Obtener el frame de la spritesheet
   
-  // Si Sonic es una bolita, dibujar con el tamaño más pequeño
+  //Si Sonic es bolita, dibujar más pequeño
   if (isBall) {
-    image(frame, worldX - charSize / 2, worldY - charSize / 2, charSize * 0.7, charSize * 0.7); // Reducir tamaño para hacerlo más pequeño
+    image(frame, PiX - charSize / 2, PiY - charSize / 2, charSize * 0.7, charSize * 0.7);
   } else {
-    image(frame, worldX - charSize / 2, worldY - charSize / 2, charSize, charSize); // Tamaño normal
+    image(frame, PiX - charSize / 2, PiY - charSize / 2, charSize, charSize); // Tamaño normal
   }
 }
 
-// Cambiar al siguiente cuadro de la animación
+
 void nextFrame() {
   currentFrame = (currentFrame + 1) % currentAnimation.length;
 }
 
-// Cambiar la animación actual
+//Cambiar la animación actual
 void setAnimation(int[][] newAnimation) {
   if (currentAnimation != newAnimation) {
     currentAnimation = newAnimation;
@@ -217,73 +250,86 @@ void setAnimation(int[][] newAnimation) {
   }
 }
 
+
 void keyPressed() {
+  
+  //Volver al menú
+  if (key == 'm' || key == 'M') {
+    scene = 0; 
+  }
+  
   // Movimiento horizontal
-  if (key == 'a') {
-    speedX = -5;  // Mover a la izquierda
-    setAnimation(walkFrames);  // Cambiar a la animación de caminar
-  } else if (key == 'd') {
-    speedX = 5;  // Mover a la derecha
-    setAnimation(walkFrames);  // Cambiar a la animación de caminar
+  if (key == 'a' || key == 'A') {
+    speedX = -3;  
+    setAnimation(walkFrames);
+  } else if (key == 'd' || key == 'D') {
+    speedX = 3;  
+    setAnimation(walkFrames);
   }
 
   // Salto
-  if ((key == 'w' || key == 'W') && !isJumping) {  // Solo saltar si está en el suelo
+  if ((key == ENTER) && !isJumping) {  //Que no siga saltando y no vuele
     speedY = -8;
-    worldY = worldY - 50;
+    PiY = PiY - 50;
     isJumping = true;
-    setAnimation(jumpFrames);  // Cambiar a la animación de salto
+    setAnimation(jumpFrames); 
   }
 
-  // Transformarse en bolita
-  if (key == 's') {
-    isBall = true;  // Sonic se hace bolita
-    setAnimation(ballHoldFrames);  // Cambiar a la animación de bolita (asegúrate de que esté bien definida en la hoja de sprites)
-  }
+  //Bolita
+  if (key == 's' || key == 'S') {
+    isBall = true;  
+    setAnimation(ballFrames);  
+    
+  //Correr
+} else if (key == 'c' || key == 'C') {
+    setAnimation(sprintFrames);
+    speedX = 5;
+}
 }
 
+
 void keyReleased() {  
-  // Detener el movimiento horizontal cuando se suelta la tecla
-  if (key == 'a' || key == 'd') {
-    speedX = 0;  // Detener el movimiento horizontal     
-    setAnimation(idleFrames);  // Cambiar a animación idle
-      
-  } else if (key == 'w') {
-      if (speedY == 0) {
-        setAnimation(idleFrames);  // Regresar a la animación idle después de saltar
-      }
-  } else if (key == 'r') {
-      setAnimation(idleFrames);  // Regresar a la animación idle
-  } else if (key == 's') {
-      isBall = false;
-      setAnimation(idleFrames);  // Regresar a la animación idle
-  } else if (key == 'f') {
-      setAnimation(idleFrames);  // Regresar a la animación idle
-  } else if (key == 'p') {
-      setAnimation(idleFrames);  // Regresar a la animación idle
-  }
- } 
-
-// Función básica de colisión
-void basicCollision() {
-  // Chequeo de colisión con el suelo
-  if (isSolid(worldX, worldY + charSize / 2)) {
-    speedY = 0; // Detener el movimiento en Y si hay colisión
-    isJumping = false;
-  }
-
-  // Chequeo de colisión en los lados izquierdo y derecho
-  if (speedX > 0 && isSolid(worldX + charSize / 2, worldY)) { // Colisión derecha
+  
+  if (key == 'a' || key == 'A' || key == 'd' || key == 'D') {
+    speedX = 0; 
+    setAnimation(idleFrames);
+    if (speedY == 0) {
+      setAnimation(idleFrames);
+    }
+} else if (key == 'r' || key == 'R') {
+    setAnimation(idleFrames);  
+} else if (key == 's' || key == 'S') {
+    isBall = false;
+    setAnimation(idleFrames); 
+} else if (key == 'c' || key == 'C') {
+    setAnimation(idleFrames);  
     speedX = 0;
-  } else if (speedX < 0 && isSolid(worldX - charSize / 2, worldY)) { // Colisión izquierda
+}
+} 
+
+
+void colisiones() {
+
+  //Colisión con el suelo
+  if (isSolid(PiX, PiY + charSize / 2)) {
+    speedY = 0; 
+    if (isJumping) {
+      isJumping = false;
+      setAnimation(idleFrames);
+    }
+  }
+  //Colisión a los lados
+  if (speedX > 0 && isSolid(PiX + charSize / 2, PiY)) { //Derecha
+    speedX = 0;
+  } else if (PiX < 0 && isSolid(PiX - charSize / 2, PiY)) { //Izquierda
     speedX = 0;
   }
 }
 
 boolean isSolid(float x, float y) {
   // Ajustar las coordenadas con el desplazamiento del mapa
-  float adjustedX = x + mapOffsetX;
-  float adjustedY = y + mapOffsetY;
+  float adjustedX = x + mapSetX;
+  float adjustedY = y + mapSetY;
 
   // Convertir las coordenadas ajustadas a índices de la matriz de colisiones
   int mapX = int(adjustedX / charSize);
@@ -294,4 +340,37 @@ boolean isSolid(float x, float y) {
     return collisionMap[mapY][mapX] == 1;
   }
   return false;
+}
+
+
+class Button {
+  float x, y, w, h;
+  String label;
+  PFont fuente;
+
+  Button(float tempX, float tempY, float tempW, float tempH, String tempLabel, PFont tempFuente) {
+    x = tempX;
+    y = tempY;
+    w = tempW;
+    h = tempH;
+    label = tempLabel;
+    fuente = tempFuente;
+  }
+
+  void display() {
+    if (isMouseOver()) {
+      fill(200);
+  } else {
+      fill(150);
+    }
+    rect(x, y, w, h);
+    fill(0);
+    textAlign(CENTER, CENTER);
+    textFont(fuente);
+    text(label, x + w / 2, y + h / 2);
+  }
+
+  boolean isMouseOver() {
+    return mouseX > x && mouseX < x + w && mouseY > y && mouseY < y + h;
+  }
 }
